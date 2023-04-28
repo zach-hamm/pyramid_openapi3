@@ -127,6 +127,40 @@ def test_add_spec_view() -> None:
             assert view(request=None, context=None).body == MINIMAL_DOCUMENT
 
 
+def test_add_spec_without_view() -> None:
+    """Test registration of a openapi spec file without the associated view."""
+    with testConfig() as config:
+        config.include("pyramid_openapi3")
+
+        with tempfile.NamedTemporaryFile() as document:
+            document.write(MINIMAL_DOCUMENT)
+            document.seek(0)
+
+            config.pyramid_openapi3_spec(
+                document.name, route="/foo.yaml", route_name="foo_api_spec"
+            )
+
+            # assert settings
+            openapi_settings = config.registry.settings["pyramid_openapi3"]
+            assert openapi_settings["filepath"] == document.name
+            assert openapi_settings["spec_route_name"] == "foo_api_spec"
+            assert openapi_settings["spec"]["info"]["title"] == "Foo API"
+            assert isinstance(openapi_settings["request_validator"], RequestValidator)
+            assert isinstance(openapi_settings["response_validator"], ResponseValidator)
+
+            # assert route
+            mapper = config.registry.getUtility(IRoutesMapper)
+            routes = mapper.get_routes()
+            assert routes[0] is None
+
+            # assert view
+            request = config.registry.queryUtility(IRouteRequest, name="foo_api_spec")
+            view = config.registry.adapters.registered(
+                (IViewClassifier, request, Interface), IView, name=""
+            )
+            assert view is None
+
+
 def test_add_spec_view_already_defined() -> None:
     """Test that creating a spec more than once raises an Exception."""
     with testConfig() as config:

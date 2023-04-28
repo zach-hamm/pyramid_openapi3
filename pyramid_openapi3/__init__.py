@@ -221,6 +221,7 @@ def add_spec_view(
     route_name: str = "pyramid_openapi3.spec",
     permission: str = NO_PERMISSION_REQUIRED,
     apiname: str = "pyramid_openapi3",
+    enable_spec_view: bool = True,
 ) -> None:
     """Serve and register OpenApi 3.0 specification file.
 
@@ -245,11 +246,15 @@ def add_spec_view(
         validate_spec(spec_dict)
         spec = Spec.create(spec_dict)
 
-        def spec_view(request: Request) -> FileResponse:
-            return FileResponse(filepath, request=request, content_type="text/yaml")
+        if enable_spec_view:
 
-        config.add_route(route_name, route)
-        config.add_view(route_name=route_name, permission=permission, view=spec_view)
+            def spec_view(request: Request) -> FileResponse:
+                return FileResponse(filepath, request=request, content_type="text/yaml")
+
+            config.add_route(route_name, route)
+            config.add_view(
+                route_name=route_name, permission=permission, view=spec_view
+            )
 
         config.registry.settings[apiname] = _create_api_settings(
             config, filepath, route_name, spec
